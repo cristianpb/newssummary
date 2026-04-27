@@ -7,8 +7,8 @@ from openai import OpenAI
 NEWS_API_KEY = os.environ.get("NEWSAPI_KEY")
 OPENAI_API_KEY = os.environ.get("GROQ_API_KEY")
 KEYWORDS = json.loads(os.environ.get("KEYWORDS", '[]'))
-TELEGRAM_BOT_TOKEN = "your_bot_token"
-TELEGRAM_CHAT_ID = "your_chat_id"
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
 client = OpenAI(
     api_key=OPENAI_API_KEY,
@@ -32,10 +32,10 @@ def fetch_news_with_sources(keyword):
     
     return formatted_data
 
-def generate_resume_with_citations(news_content):
+def generate_resume_with_citations(news_content, keyword):
     """LLM summarizes news and explicitly includes source links."""
     prompt = (
-        "Create a professional news resume in english based on the data below. "
+        f"Create a professional news resume in english based on the data below, related to {keyword}. "
         "For every news item, include a brief summary in english and the source name with its URL. "
         "Format it using Telegram-friendly Markdown (e.g., [Source Name](URL)).\n\n"
         f"{news_content}"
@@ -69,20 +69,17 @@ if __name__ == "__main__":
         
         if content_for_llm:
             print("🧠 Synthesizing summary with citations...")
-            final_report = generate_resume_with_citations(content_for_llm)
+            final_report = generate_resume_with_citations(content_for_llm, keyword)
             
             print("📤 Sending to Telegram...")
             # Adding a header to the final message
             full_message = f"📰 *Latest Updates: {keyword}*\n\n{final_report}"
-            print(full_message)
-            #status = send_telegram_msg(f"✨ *Daily Briefing: {keyword}*\n\n{summary}")
+            # Note: Telegram has a 4096 character limit per message
+            status = send_telegram_msg(full_message[:4090])
             
-            #if status == 200:
-            #    print("✅ Success! Check your Telegram.")
-            #else:
-            #    print(f"❌ Failed to send message. Status: {status}")
+            if status == 200:
+                print("✅ Success! Check your Telegram.")
+            else:
+                print(f"❌ Failed to send message. Status: {status}")
         else:
             print("⚠️ No news found for that keyword.")
-
-
-https://www.n-tv.de/politik/21-45-IAEA-Chef-mahnt-zur-schnellen-Reparatur-der-Tschernobyl-Schutzanlage-id30757737.html
