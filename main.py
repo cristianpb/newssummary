@@ -1,11 +1,12 @@
 import os
+import json
 import requests
 from openai import OpenAI
 
 # --- CONFIGURATION ---
 NEWS_API_KEY = os.environ.get("NEWSAPI_KEY")
 OPENAI_API_KEY = os.environ.get("GROQ_API_KEY")
-KEYWORDS = os.environ.get("KEYWORDS", [])
+KEYWORDS = json.loads(os.environ.get("KEYWORDS", '[]'))
 TELEGRAM_BOT_TOKEN = "your_bot_token"
 TELEGRAM_CHAT_ID = "your_chat_id"
 
@@ -14,27 +15,36 @@ client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
 )
 
-def fetch_news(keyword):
-    """Fetch recent articles from NewsAPI based on a keyword."""
-    url = f"https://newsapi.org/v2/everything?q={keyword}&pageSize=5&sortBy=relevancy&apiKey={NEWS_API_KEY}"
-    print(url)
+def fetch_news_with_sources(keyword):
+    """Fetch news and return a formatted string with titles and URLs."""
+    url = f"https://newsapi.org/v2/everything?q={keyword}&pageSize=5&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
     response = requests.get(url)
     articles = response.json().get('articles', [])
     
-    # Combine titles and descriptions for the LLM
-    news_text = ""
-    for idx, art in enumerate(articles):
-        news_text += f"{idx+1}. {art['title']}: {art['description']}\n\n"
-    return news_text
+    formatted_data = ""
+    for art in articles:
+        source_name = art['source']['name']
+        title = art['title']
+        link = art['url']
+        desc = art.get('description', 'No description available.')
+        
+        formatted_data += f"SOURCE: {source_name}\nTITLE: {title}\nURL: {link}\nSUMMARY: {desc}\n\n"
+    
+    return formatted_data
 
-def generate_resume(news_content):
-    """Use an LLM to summarize the news into a 'briefing' or resume format."""
-    prompt = f"Summarize the following news articles into a professional daily briefing:\n\n{news_content}"
+def generate_resume_with_citations(news_content):
+    """LLM summarizes news and explicitly includes source links."""
+    prompt = (
+        "Create a professional news resume in english based on the data below. "
+        "For every news item, include a brief summary in english and the source name with its URL. "
+        "Format it using Telegram-friendly Markdown (e.g., [Source Name](URL)).\n\n"
+        f"{news_content}"
+    )
     
     response = client.chat.completions.create(
         model="openai/gpt-oss-20b",
         messages=[
-            {"role": "system", "content": "You are a news curator. Create a concise executive summary."},
+            {"role": "system", "content": "You are a research assistant that provides cited news summaries."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -54,15 +64,17 @@ def send_telegram_msg(text):
 # --- EXECUTION ---
 if __name__ == "__main__":
     for keyword in KEYWORDS:
-        print(f"🔍 Fetching news for: {keyword}...")
-        raw_news = fetch_news(keyword)
+        print(f"📡 Gathering news for {keyword}...")
+        content_for_llm = fetch_news_with_sources(keyword)
         
-        if raw_news:
-            print("🤖 Generating LLM summary...")
-            summary = generate_resume(raw_news)
+        if content_for_llm:
+            print("🧠 Synthesizing summary with citations...")
+            final_report = generate_resume_with_citations(content_for_llm)
             
-            print("📤 Sending Telegram notification...")
-            print(summary)
+            print("📤 Sending to Telegram...")
+            # Adding a header to the final message
+            full_message = f"📰 *Latest Updates: {keyword}*\n\n{final_report}"
+            print(full_message)
             #status = send_telegram_msg(f"✨ *Daily Briefing: {keyword}*\n\n{summary}")
             
             #if status == 200:
@@ -71,3 +83,6 @@ if __name__ == "__main__":
             #    print(f"❌ Failed to send message. Status: {status}")
         else:
             print("⚠️ No news found for that keyword.")
+
+
+https://www.n-tv.de/politik/21-45-IAEA-Chef-mahnt-zur-schnellen-Reparatur-der-Tschernobyl-Schutzanlage-id30757737.html
