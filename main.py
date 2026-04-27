@@ -64,7 +64,7 @@ def send_telegram_msg(text):
 # --- EXECUTION ---
 if __name__ == "__main__":
     for keyword in KEYWORDS:
-        print(f"📡 Gathering news for {keyword}...")
+        print("📡 Gathering news...")
         content_for_llm = fetch_news_with_sources(keyword)
         
         if content_for_llm:
