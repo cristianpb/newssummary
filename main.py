@@ -4,7 +4,7 @@ import requests
 from openai import OpenAI
 
 # --- CONFIGURATION ---
-NEWS_API_KEY = os.environ.get("NEWSAPI_KEY")
+NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 OPENAI_API_KEY = os.environ.get("GROQ_API_KEY")
 KEYWORDS = json.loads(os.environ.get("KEYWORDS", '[]'))
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
