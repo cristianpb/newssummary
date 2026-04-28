@@ -17,6 +17,10 @@ client = OpenAI(
 
 def fetch_news_with_sources(keyword):
     """Fetch news and return a formatted string with titles and URLs."""
+    if NEWS_API_KEY is None:
+        print("⚠️ NEWSAPI_KEY is not set. Please set it in your environment variables.")
+        return None
+        
     url = f"https://newsapi.org/v2/everything?q={keyword}&pageSize=5&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
     response = requests.get(url)
     articles = response.json().get('articles', [])
@@ -34,6 +38,9 @@ def fetch_news_with_sources(keyword):
 
 def generate_resume_with_citations(news_content, keyword):
     """LLM summarizes news and explicitly includes source links."""
+    if OPENAI_API_KEY is None:
+        print("⚠️ GROQ_API_KEY is not set. Please set it in your environment variables.")
+        return "Error: LLM API key not configured."
     prompt = (
         f"Create a professional news resume in english based on the data below, related to {keyword}. "
         "For every news item, include a brief summary in english and the source name with its URL. "
@@ -71,15 +78,16 @@ if __name__ == "__main__":
             print("🧠 Synthesizing summary with citations...")
             final_report = generate_resume_with_citations(content_for_llm, keyword)
             
-            print("📤 Sending to Telegram...")
-            # Adding a header to the final message
-            full_message = f"📰 *Latest Updates: {keyword}*\n\n{final_report}"
-            # Note: Telegram has a 4096 character limit per message
-            status = send_telegram_msg(full_message[:4090])
-            
-            if status == 200:
-                print("✅ Success! Check your Telegram.")
-            else:
-                print(f"❌ Failed to send message. Status: {status}")
+            if final_report is not None and final_report.strip() != "":
+                print("📤 Sending to Telegram...")
+                # Adding a header to the final message
+                full_message = f"📰 *Latest Updates: {keyword}*\n\n{final_report}"
+                # Note: Telegram has a 4096 character limit per message
+                status = send_telegram_msg(full_message[:4090])
+                
+                if status == 200:
+                    print("✅ Success! Check your Telegram.")
+                else:
+                    print(f"❌ Failed to send message. Status: {status}")
         else:
             print("⚠️ No news found for that keyword.")
